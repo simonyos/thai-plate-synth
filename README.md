@@ -54,46 +54,52 @@ make synth        # 1000 plates → data/synth_v1/
 
 ## Sample renders
 
-Six plates from the weekend-1 renderer (seed=0, no augmentation yet):
+**Clean (weekend-1):**
 
-![Synth gallery](experiments/figures/synth_gallery.png)
+![Clean gallery](experiments/figures/synth_gallery.png)
+
+**Augmented (weekend-3 — perspective, photometric, blur, noise, JPEG):**
+
+![Augmented gallery](experiments/figures/synth_gallery_aug.png)
 
 All 44 Thai consonants and 10 digits are in the class space; per-character
-YOLO bboxes ship alongside every image.
+YOLO bboxes ship alongside every image and are re-projected through each
+geometric augmentation.
 
-## Weekend-2 results — synth-only training
+## Training runs
 
-YOLOv8n trained on 5,000 synth plates (4,500 train / 500 val), 50 epochs,
-imgsz 480, batch 64, seed 42. **13 min on an RTX 3060 Ti** — essentially
-the synth ceiling: no augmentation yet, no domain gap to close within the
-synth set.
+YOLOv8n, 50 epochs, imgsz 480, batch 64, seed 42, 5,000 plates each
+(4,500 train / 500 val), RTX 3060 Ti 8 GB.
 
-| Metric | Value |
-|---|---:|
-| Precision | 0.997 |
-| Recall | 1.000 |
-| mAP@0.5 | **0.995** |
-| mAP@0.5:0.95 | **0.995** |
-| Train time | 13 min (3060 Ti, 8 GB) |
+| Run | Augmentation | mAP@0.5 | mAP@0.5:0.95 | Precision | Recall | Train time |
+|---|---|---:|---:|---:|---:|---:|
+| `synth_v1` | none | 0.995 | **0.995** | 0.997 | 1.000 | 13 min |
+| `synth_v2` | perspective + photometric + blur + noise + JPEG | 0.995 | **0.987** | 0.996 | 0.998 | 12.5 min |
 
-![Training curves](experiments/figures/synth_v1/results.png)
+The augmented run drops mAP@0.5:0.95 by 0.8 points — exactly the price we
+pay for training on perspective-warped boxes whose edges are inherently
+less tight. mAP@0.5 and per-class accuracy are unchanged. That's the shape
+we want: the model generalises over viewing angles and sensor noise
+without losing the clean-case performance.
 
-The 54-class confusion matrix is near-diagonal — all 44 consonants and 10
-digits are separable on clean renders:
+**Training curves, synth_v2:**
 
-![Confusion matrix](experiments/figures/synth_v1/confusion_matrix.png)
+![Training curves](experiments/figures/synth_v2/results.png)
 
-This is the **upper bound** we're trying to preserve through realism
-augmentation. Weekend 3 adds perspective, blur, lighting, and background
-compositing; weekend 4 runs the same weights against hand-labeled real
-plates — expect a significant drop, which is exactly the signal that
-drives the augmentation ablation.
+**Confusion matrix, synth_v2** — still clean-diagonal across all 54 classes:
+
+![Confusion matrix](experiments/figures/synth_v2/confusion_matrix.png)
+
+The real test is weekend 4 — running these weights on hand-labeled real
+plates from the `thai-plate-ocr` validation gallery. That is where the
+synth→real gap actually gets measured.
 
 ## Status
 
 ✅ Weekend 1 — renderer MVP
-✅ Weekend 2 — first training run (synth-only, no augmentation)
-🚧 Weekend 3 — augmentation + realism pass
+✅ Weekend 2 — synth-only training (ceiling: mAP@0.5:0.95 = 0.995)
+✅ Weekend 3 — augmentation pipeline + augmented training (mAP@0.5:0.95 = 0.987)
+🚧 Weekend 4 — hand-label ~50 real plates; run v1 vs v2 head-to-head
 
 ## License
 
