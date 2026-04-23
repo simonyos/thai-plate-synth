@@ -1,0 +1,27 @@
+{
+  "out_dir": "data/real_scrape/roboflow",
+  "n_sources_ok": 9,
+  "n_sources_skipped": 2,
+  "n_images_total": 5514,
+  "per_source": {
+    "nextra/thai-licence-plate-detect-b93xq": 294,
+    "license-plate-q7bk1/thailand-license-plate": 343,
+    "naruesorn/thai-license-plate-j6y9l": 349,
+    "th-support-cytron-yvkeg/thai-license-plate-detector": 153,
+    "card-detector/thai-license-plate-character-detect": 2521,
+    "card-detector/thai-license-plate-wniws": 459,
+    "dataset-format-conversion-iidaz/thailand-license-plate-recognition": 343,
+    "thaich/thailand-license-plate-recognition-vx6tn": 907,
+    "th-support-cytron-yvkeg/province-on-thai-license-plate-detector": 145
+  },
+  "skipped": [
+    [
+      "thailland-plates/thailand-license-plates",
+      "no versions available"
+    ],
+    [
+      "nutjulanan/province-on-thai-license-plate-detector-hntyj",
+      "no versions available"
+    ]
+  ]
+}

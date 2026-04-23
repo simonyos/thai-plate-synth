@@ -124,7 +124,8 @@ char-accuracy where ground truth exists) are in
 ✅ Weekend 3 — augmentation pipeline + augmented training (mAP@0.5:0.95 = 0.987)
 ✅ Weekend 4 — head-to-head on 12 real plates; augmentation lifts char-acc 4.4×
 ✅ Weekend 5a — public-source scrape: 2,418 unique real Thai plates from 9 Roboflow Universe projects
-🚧 Weekend 5b — consonant-confusion fix (imgsz 640 + oversampled confusion pairs) or VLM-as-verifier
+✅ Weekend 5b — VLM auto-labeler (Qwen2.5-VL-3B): 2,409/2,418 labeled, 1,285 high-confidence + regex-compliant
+🚧 Weekend 6 — gold-verify 50-plate test set; pick YOLO-distill vs VLM-SFT vs RL for the headline lift
 
 ## Real-plate corpus
 
@@ -139,6 +140,28 @@ Images are gitignored; `src/thai_plate_synth/scrape/` holds the reproducible
 scraper + deduper. Every surviving image has a provenance record
 (workspace, project, version, license) in
 `data/real_scrape/roboflow/provenance.jsonl`.
+
+### VLM auto-labeling pass
+
+Every scraped image is then read by **Qwen2.5-VL-3B-Instruct** (bf16 on the
+3060 Ti, ~0.17 img/s, ~4 hours total). The VLM emits a structured
+`REGISTRATION`/`PROVINCE`/`CONFIDENCE` triple per image, used as
+**pseudo-ground-truth** for downstream student-model distillation / RL
+reward. See [`experiments/figures/vlm_label_audit.md`](experiments/figures/vlm_label_audit.md)
+for the full audit.
+
+| metric | value |
+|---|---:|
+| labeled (non-error, non-empty) | 2,409 / 2,418 |
+| high-confidence | 1,752 (73%) |
+| regex-compliant overall | 1,480 (61%) |
+| **usable corpus** (high ∩ regex-compliant) | **1,285** |
+
+Key failure modes (37% of the raw output):
+- VLM skips the Thai consonant entirely on some plates (`492`, `6999`, `40282`)
+- Atypical 5-trailing-digit variants `4ก65419` don't fit the canonical regex
+- Hand-verification of a small sample is the next step — VLM labels become
+  the *training signal*, not the evaluation ground truth.
 
 ## License
 
