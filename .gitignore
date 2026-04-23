@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.eggs/
+build/
+dist/
+
+# uv
+.uv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/
+*.swp
+
+# Data — regenerable or non-redistributable
+data/synth_v1/
+data/synth_v*/
+data/real_test/images/
+data/real_test/labels/
+
+# Model weights — regenerable from training
+runs/
+artifacts/
+*.pt
+mlruns/
+wandb/
+
+# Fonts — not redistributable per f0nt.com license (see assets/fonts/README.md)
+assets/fonts/*.ttf
+assets/fonts/*.otf
+
+# Generated reports and reproducible samples
+experiments/runs/
+experiments/figures/samples/

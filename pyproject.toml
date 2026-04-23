@@ -1,0 +1,49 @@
+[project]
+name = "thai-plate-synth"
+version = "0.1.0"
+description = "Synthetic Thai license-plate dataset generator and two-stage YOLO OCR pipeline"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Simon Yosboon", email = "simon.yosboon@hotmail.com" }]
+dependencies = [
+    "pillow>=10.0",
+    "numpy>=1.26",
+    "typer>=0.12",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+train = [
+    "ultralytics>=8.2",
+    "torch>=2.2",
+]
+serve = [
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+    "python-multipart>=0.0.9",
+]
+demo = [
+    "streamlit>=1.33",
+]
+dev = [
+    "ruff>=0.5",
+    "pytest>=8.0",
+]
+
+[project.scripts]
+plate-synth = "thai_plate_synth.cli:app"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
