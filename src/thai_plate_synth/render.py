@@ -118,13 +118,28 @@ def _write_dataset_yaml(out_dir: Path) -> None:
     (out_dir / "dataset.yaml").write_text("\n".join(lines) + "\n")
 
 
-def generate(out: Path, count: int, seed: int, val_frac: float = 0.1, annotated_preview: bool = False) -> None:
+def generate(
+    out: Path,
+    count: int,
+    seed: int,
+    val_frac: float = 0.1,
+    annotated_preview: bool = False,
+    aug: bool = False,
+) -> None:
     if not FONT_PATH.is_file():
         raise FileNotFoundError(
             f"Font not found at {FONT_PATH}. See assets/fonts/README.md for the download link."
         )
     font = ImageFont.truetype(str(FONT_PATH), FONT_SIZE)
     rng = random.Random(seed)
+
+    if aug:
+        # Local import so non-aug runs don't depend on numpy indirectly.
+        from thai_plate_synth.augment import AugConfig, apply as apply_aug
+        aug_cfg = AugConfig()
+    else:
+        apply_aug = None
+        aug_cfg = None
 
     out.mkdir(parents=True, exist_ok=True)
     for split in ("train", "val"):
@@ -137,10 +152,15 @@ def generate(out: Path, count: int, seed: int, val_frac: float = 0.1, annotated_
     def _emit(idx: int, split: str) -> None:
         glyphs = _sample_registration(rng)
         img, anns = _render_plate(glyphs, font)
+        if apply_aug is not None:
+            img, anns = apply_aug(img, anns, rng, aug_cfg)
+            if not anns:
+                # All bboxes warped off-canvas; skip (extremely rare at default settings).
+                return
         name = f"plate_{idx:06d}"
         img.save(out / "images" / split / f"{name}.png")
         (out / "labels" / split / f"{name}.txt").write_text(
-            "\n".join(_yolo_lines(anns, PLATE_W, PLATE_H)) + "\n"
+            "\n".join(_yolo_lines(anns, img.width, img.height)) + "\n"
         )
         if annotated_preview:
             preview = img.copy()
@@ -155,7 +175,7 @@ def generate(out: Path, count: int, seed: int, val_frac: float = 0.1, annotated_
         _emit(n_train + i, "val")
 
     _write_dataset_yaml(out)
-    print(f"Wrote {n_train} train + {n_val} val plates to {out}")
+    print(f"Wrote {n_train} train + {n_val} val plates to {out} (aug={aug})")
 
 
 def main() -> None:
@@ -165,8 +185,9 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=0, help="Random seed")
     ap.add_argument("--val-frac", type=float, default=0.1, help="Fraction for val split")
     ap.add_argument("--annotated", action="store_true", help="Also save per-char bbox overlays")
+    ap.add_argument("--aug", action="store_true", help="Apply photometric/geometric augmentation")
     args = ap.parse_args()
-    generate(args.out, args.count, args.seed, args.val_frac, args.annotated)
+    generate(args.out, args.count, args.seed, args.val_frac, args.annotated, args.aug)
 
 
 if __name__ == "__main__":
