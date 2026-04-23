@@ -26,6 +26,23 @@ from thai_plate_synth.alphabet import CONSONANTS, DIGITS, GLYPH_TO_CLASS, N_CLAS
 
 FONT_PATH = Path(__file__).resolve().parents[2] / "assets/fonts/SarunsThangLuang.ttf"
 
+# Visually-similar consonant groups — each set-element is easily confused with
+# at least one other element by both our YOLO recognizer and Qwen2.5-VL-3B.
+# Source: gold verification of 50 real plates (see experiments/figures/
+# vlm_label_audit.md). Oversampling plates composed only of these consonants
+# increases the per-step gradient signal on the discriminating features.
+CONFUSION_GROUPS: tuple[tuple[str, ...], ...] = (
+    ("ด", "ฎ"),
+    ("ต", "ถ"),
+    ("พ", "ผ", "ค", "ฎ", "ม", "ฟ", "ฌ"),
+    ("ร", "ธ"),
+    ("ม", "ฆ"),
+    ("น", "ก"),
+    ("ย", "ว"),
+    ("ภ", "ก"),
+)
+HARD_CONSONANTS: tuple[str, ...] = tuple(sorted({c for grp in CONFUSION_GROUPS for c in grp}))
+
 # Plate canvas (white/private, single line).
 PLATE_W = 440
 PLATE_H = 110
@@ -44,11 +61,16 @@ class CharAnn:
     y2: int
 
 
-def _sample_registration(rng: random.Random) -> list[str]:
-    """Sample a plausible Thai registration string as a list of glyphs."""
+def _sample_registration(rng: random.Random, p_hard: float = 0.0) -> list[str]:
+    """Sample a plausible Thai registration string as a list of glyphs.
+
+    With probability `p_hard`, sample consonants only from HARD_CONSONANTS
+    (the visually-confusable set) to oversample discriminating examples.
+    """
     n_lead = rng.choice([0, 1, 1, 2])  # weight toward 0-1 leading digits
     lead = [rng.choice(DIGITS) for _ in range(n_lead)]
-    cons = [rng.choice(CONSONANTS) for _ in range(2)]
+    pool = HARD_CONSONANTS if rng.random() < p_hard else CONSONANTS
+    cons = [rng.choice(pool) for _ in range(2)]
     tail = [rng.choice(DIGITS) for _ in range(4)]
     return lead + cons + tail
 
@@ -125,6 +147,7 @@ def generate(
     val_frac: float = 0.1,
     annotated_preview: bool = False,
     aug: bool = False,
+    p_hard: float = 0.0,
 ) -> None:
     if not FONT_PATH.is_file():
         raise FileNotFoundError(
@@ -150,7 +173,7 @@ def generate(
     n_train = count - n_val
 
     def _emit(idx: int, split: str) -> None:
-        glyphs = _sample_registration(rng)
+        glyphs = _sample_registration(rng, p_hard=p_hard)
         img, anns = _render_plate(glyphs, font)
         if apply_aug is not None:
             img, anns = apply_aug(img, anns, rng, aug_cfg)
@@ -175,7 +198,7 @@ def generate(
         _emit(n_train + i, "val")
 
     _write_dataset_yaml(out)
-    print(f"Wrote {n_train} train + {n_val} val plates to {out} (aug={aug})")
+    print(f"Wrote {n_train} train + {n_val} val plates to {out} (aug={aug}, p_hard={p_hard})")
 
 
 def main() -> None:
@@ -186,8 +209,12 @@ def main() -> None:
     ap.add_argument("--val-frac", type=float, default=0.1, help="Fraction for val split")
     ap.add_argument("--annotated", action="store_true", help="Also save per-char bbox overlays")
     ap.add_argument("--aug", action="store_true", help="Apply photometric/geometric augmentation")
+    ap.add_argument(
+        "--p-hard", type=float, default=0.0,
+        help="Prob [0,1] of sampling consonants from the confusion-prone set; see CONFUSION_GROUPS",
+    )
     args = ap.parse_args()
-    generate(args.out, args.count, args.seed, args.val_frac, args.annotated, args.aug)
+    generate(args.out, args.count, args.seed, args.val_frac, args.annotated, args.aug, args.p_hard)
 
 
 if __name__ == "__main__":

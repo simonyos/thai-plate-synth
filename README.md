@@ -127,7 +127,8 @@ char-accuracy where ground truth exists) are in
 ✅ Weekend 5b — VLM auto-labeler (Qwen2.5-VL-3B): 2,409/2,418 labeled, 1,285 high-confidence + regex-compliant
 ✅ Weekend 5c — hand-verified 50-plate gold set → **48% VLM exact plate accuracy, 88% char-level LCS**; all failures are consonant substitutions
 ✅ Weekend 5d — quality filter: drop 2 unreliable sources (86% / 67% skip rates) → **784-plate clean training corpus**
-🚧 Weekend 6 — YOLO distillation on the 784 clean pseudo-labels; evaluate on the 23-plate readable gold subset
+✅ Weekend 6 — confusion-aware synth + pseudo-label distillation: **negative result** — neither intervention improves on synth_v2's 0.346 char-acc, naive distillation regresses to 0.220
+🚧 Weekend 7 — pick between (a) cleaner pseudo-labels via stage-1-driven bbox synthesis, (b) yolov8s backbone upgrade, or (c) replace stage-2 entirely with a small LoRA-tuned VLM
 
 ## Real-plate corpus
 
@@ -196,10 +197,40 @@ correct digit scaffold:
 | `มบ6224` | `ฆบ6224` | ม↔ฆ |
 
 This is the *exact* failure mode hit by the original `thai-plate-ocr` YOLO
-recognizer in the prior project. The next step is to use the 784-plate
-clean corpus to distill real-world char-level supervision back into the
-YOLO recognizer, with targeted oversampling of the confused consonant
-pairs in synth rendering.
+recognizer in the prior project.
+
+## Weekend 6 — what didn't work (and why that's useful)
+
+Two interventions tested, both ablated against `synth_v2`:
+
+| Run | Delta | Config | Char-acc on gold-27 |
+|---|---|---|---:|
+| `synth_v1` | baseline | clean synth, no aug | 0.175 |
+| `synth_v2` | — | + full augmentation | **0.346** |
+| `synth_v3a` | +confusion | p_hard=0.3 oversample of ambiguous pairs | 0.331 |
+| `synth_v3` | +confusion +pseudo | merge 282 real plates with synth_v2 bbox proposals | 0.220 |
+
+**Finding 1 — confusion-aware sampling is neutral.** Oversampling the
+visually-similar consonant pairs at p_hard=0.3 ran within noise of the
+baseline. Naively "showing more of the hard characters" doesn't fix the
+problem because the model's bottleneck isn't *exposure* to those glyphs
+(it already sees each consonant ~100× per epoch) but its *capacity* to
+resolve fine shape differences at `yolov8n` scale + `imgsz=480`.
+
+**Finding 2 — naive pseudo-label distillation hurts.** Using
+`synth_v2`'s bbox proposals on real plates as training targets
+regressed char-acc by 0.126 points. synth_v2 is a weak detector on
+real pixels, so its proposed bboxes are imprecise; training on those
+noisy spatial targets taught synth_v3 to *under-detect* characters
+(fragmented, shorter outputs). The class labels from the VLM were the
+accurate part of the signal; the boxes were the liability.
+
+These are both standard failure modes in self-distillation research,
+confirmed here on a controlled ablation. The right next intervention
+is one that produces cleaner bboxes (e.g., stage-1-detector crop + 
+evenly-spaced chars) or avoids bbox supervision entirely (VLM SFT).
+
+![gold-set comparison](experiments/figures/gold_eval.md)
 
 ### Source quality filter
 
