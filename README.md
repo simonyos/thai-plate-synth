@@ -125,7 +125,9 @@ char-accuracy where ground truth exists) are in
 ✅ Weekend 4 — head-to-head on 12 real plates; augmentation lifts char-acc 4.4×
 ✅ Weekend 5a — public-source scrape: 2,418 unique real Thai plates from 9 Roboflow Universe projects
 ✅ Weekend 5b — VLM auto-labeler (Qwen2.5-VL-3B): 2,409/2,418 labeled, 1,285 high-confidence + regex-compliant
-🚧 Weekend 6 — gold-verify 50-plate test set; pick YOLO-distill vs VLM-SFT vs RL for the headline lift
+✅ Weekend 5c — hand-verified 50-plate gold set → **48% VLM exact plate accuracy, 88% char-level LCS**; all failures are consonant substitutions
+✅ Weekend 5d — quality filter: drop 2 unreliable sources (86% / 67% skip rates) → **784-plate clean training corpus**
+🚧 Weekend 6 — YOLO distillation on the 784 clean pseudo-labels; evaluate on the 23-plate readable gold subset
 
 ## Real-plate corpus
 
@@ -157,11 +159,62 @@ for the full audit.
 | regex-compliant overall | 1,480 (61%) |
 | **usable corpus** (high ∩ regex-compliant) | **1,285** |
 
-Key failure modes (37% of the raw output):
-- VLM skips the Thai consonant entirely on some plates (`492`, `6999`, `40282`)
-- Atypical 5-trailing-digit variants `4ก65419` don't fit the canonical regex
-- Hand-verification of a small sample is the next step — VLM labels become
-  the *training signal*, not the evaluation ground truth.
+### Gold verification — the real accuracy number
+
+A deterministic 50-plate sample (seed=42) from the 1,285 high-confidence
+corpus was hand-verified via a [Streamlit UI](app/verify_labels.py). Every
+verdict — correct / partial / wrong / unreadable-skip — is saved to
+[`data/real_scrape/roboflow/gold_labels.jsonl`](data/real_scrape/roboflow/gold_labels.jsonl).
+
+| verdict | count |
+|---|---:|
+| ✓ correct | 13 |
+| ~ partial (consonant swap, digits right) | 11 |
+| ✗ wrong | 3 |
+| ⊘ skip (unreadable image) | 23 |
+
+**VLM accuracy on the 27 rateable plates:**
+
+| metric | value |
+|---|---:|
+| exact plate-level | 48.1% |
+| with-partial-credit | 68.5% |
+| char-level LCS | **88.0%** |
+| digit accuracy | ~100% |
+| consonant accuracy | ~67% — **the remaining bottleneck** |
+
+**Every wrong/partial prediction is a Thai consonant substitution** on a
+correct digit scaffold:
+
+| VLM said | Ground truth | Confused pair |
+|---|---|---|
+| `6กพ3683` | `6กค3683` | พ↔ค |
+| `ขด5011` | `ขฎ5011` | ด↔ฎ |
+| `8กพ6487` | `8กฎ6487` | พ↔ฎ |
+| `2กต8447` | `2กถ8447` | ต↔ถ |
+| `1กพ571` | `1กผ571` | พ↔ผ |
+| `มบ6224` | `ฆบ6224` | ม↔ฆ |
+
+This is the *exact* failure mode hit by the original `thai-plate-ocr` YOLO
+recognizer in the prior project. The next step is to use the 784-plate
+clean corpus to distill real-world char-level supervision back into the
+YOLO recognizer, with targeted oversampling of the confused consonant
+pairs in synth rendering.
+
+### Source quality filter
+
+The gold verification also exposed a per-source quality signal — one
+Roboflow project (`thaich/thailand-license-plate-recognition-vx6tn`) had
+an **86% unreadable rate** even when the VLM reported "high" confidence.
+`src/thai_plate_synth/scrape/filter_corpus.py` drops it plus one other
+unreliable source, producing **784 clean training plates**.
+
+| filter stage | records |
+|---|---:|
+| raw VLM labels | 2,418 |
+| high-confidence | 1,752 |
+| high + regex-compliant | 1,285 |
+| + source quality filter | **784** |
 
 ## License
 

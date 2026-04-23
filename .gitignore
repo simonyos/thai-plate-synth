@@ -30,6 +30,8 @@ data/real_scrape/**/_dupes/
 data/real_scrape/**/*.jpg
 data/real_scrape/**/*.jpeg
 data/real_scrape/**/*.png
+# Streamlit cache
+.streamlit/
 
 # Model weights — regenerable from training
 runs/
