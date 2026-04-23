@@ -230,7 +230,7 @@ confirmed here on a controlled ablation. The right next intervention
 is one that produces cleaner bboxes (e.g., stage-1-detector crop + 
 evenly-spaced chars) or avoids bbox supervision entirely (VLM SFT).
 
-![gold-set comparison](experiments/figures/gold_eval.md)
+Full side-by-side per-plate predictions: [`experiments/figures/gold_eval.md`](experiments/figures/gold_eval.md).
 
 ### Source quality filter
 
