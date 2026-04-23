@@ -1,5 +1,9 @@
 # Thai Plate Synth — Synthetic Data for Thai License-Plate OCR
 
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/simonyos/thai-plate-synth/blob/main/notebooks/thai_plate_synth_colab.ipynb)
+[![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/release/python-3110/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 End-to-end Thai license-plate OCR with a **synthetic-data-first** pipeline.
 The research asset is an open plate renderer that covers the full Thai alphabet;
 the product asset is a YOLOv8 recognizer and FastAPI/Streamlit demo trained on it.
