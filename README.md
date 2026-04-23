@@ -123,7 +123,22 @@ char-accuracy where ground truth exists) are in
 ✅ Weekend 2 — synth-only training (ceiling: mAP@0.5:0.95 = 0.995)
 ✅ Weekend 3 — augmentation pipeline + augmented training (mAP@0.5:0.95 = 0.987)
 ✅ Weekend 4 — head-to-head on 12 real plates; augmentation lifts char-acc 4.4×
-🚧 Weekend 5 — Streamlit demo + HF Space + close remaining consonant-confusion gap
+✅ Weekend 5a — public-source scrape: 2,418 unique real Thai plates from 9 Roboflow Universe projects
+🚧 Weekend 5b — consonant-confusion fix (imgsz 640 + oversampled confusion pairs) or VLM-as-verifier
+
+## Real-plate corpus
+
+The 5-plate ground truth from `thai-plate-ocr` was too thin for the weekend-4
+numbers to be statistically meaningful, so weekend 5 kicks off with a scrape
+pass across public Thai-plate datasets on Roboflow Universe. **2,418 unique
+images** after cross-source dedupe (pHash @ Hamming distance 5) from a
+5,514-image raw pool. Full breakdown:
+[`experiments/figures/scrape_summary.md`](experiments/figures/scrape_summary.md).
+
+Images are gitignored; `src/thai_plate_synth/scrape/` holds the reproducible
+scraper + deduper. Every surviving image has a provenance record
+(workspace, project, version, license) in
+`data/real_scrape/roboflow/provenance.jsonl`.
 
 ## License
 

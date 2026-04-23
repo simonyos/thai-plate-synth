@@ -24,6 +24,7 @@ data/synth_v1/
 data/synth_v*/
 data/real_test/images/
 data/real_test/labels/
+data/real_scrape/
 
 # Model weights — regenerable from training
 runs/
