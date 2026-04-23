@@ -129,6 +129,8 @@ char-accuracy where ground truth exists) are in
 ✅ Weekend 5d — quality filter: drop 2 unreliable sources (86% / 67% skip rates) → **784-plate clean training corpus**
 ✅ Weekend 6 — confusion-aware synth + pseudo-label distillation: **negative result** — neither intervention improves on synth_v2's 0.346 char-acc, naive distillation regresses to 0.220
 ✅ Weekend 7 — **clean-bbox distillation hits 0.721 char-acc** (2.1× the synth_v2 baseline); yolov8s backbone alone regresses
+✅ Weekend 8 — post-processing hit its ceiling: confusion-LM reranker neutral (0.721 → 0.716), inference-time preprocessing sweep (imgsz + top-band recrop) neutral to negative. synth_v3b at 72.1% is the recognizer's real limit; further gains need retraining
+🚧 Weekend 9 — Streamlit demo + HF Space + writeup
 
 ## Real-plate corpus
 
@@ -289,6 +291,50 @@ well-defined language-model or lookup-table problem rather than a vision
 problem.
 
 Full side-by-side per-plate predictions: [`experiments/figures/gold_eval.md`](experiments/figures/gold_eval.md).
+
+## Weekend 8 — where post-processing tapped out
+
+Two cheap non-training interventions, both failed to budge synth_v3b's
+0.721 ceiling:
+
+| Intervention | Best variant | Char-acc | Δ |
+|---|---|---:|---:|
+| synth_v3b (baseline) | — | 0.721 | — |
+| Trigram-LM consonant reranker | gap-threshold ∈ {0, 2, 5} | 0.716 | **−0.005** |
+| Trigram-LM reranker (bigger corpus) | 1,480 VLM labels | 0.710 | **−0.011** |
+| Inference imgsz sweep | imgsz=640 no-recrop | 0.706 | −0.015 |
+| Inference imgsz sweep | imgsz=960 | 0.321 | −0.400 |
+| Top-band re-crop (2-line plates) | any imgsz | 0.671–0.678 | −0.050 |
+
+**Why the reranker failed:** It was designed against the weekend-5 audit's
+"errors are consonant substitutions" finding — which held for the *VLM*
+but not for synth_v3b. Per-plate inspection showed synth_v3b's errors
+are a *mix* of:
+- missing/extra characters (length mismatches) — reranker can't fix
+- wrong digits — outside the confusion catalogue
+- consonants outside the confusion catalogue (ณ, ล, ฉ, ฐ, …)
+- only ~3 of 27 plates had errors the reranker could theoretically fix,
+  and on one of those it actively overrode a *correct* YOLO prediction
+  toward a more-frequent consonant (`66กค3683` → `66กพ3683`) because
+  the LM's frequency prior beat YOLO's local evidence.
+
+**Why preprocessing failed:** synth_v3b was trained at `imgsz=480`; larger
+test imgsz trades receptive-field alignment for resolution, and the
+tradeoff went the wrong way. Top-band re-crop (matching the training
+label distribution, which only spanned the top band on 2-line plates)
+also hurt — the recognizer apparently uses *some* global context from
+the full crop even when bboxes never landed in the bottom half.
+
+Both are reported with full per-plate tables in
+[`gold_eval_rerank.md`](experiments/figures/gold_eval_rerank.md) and
+[`gold_eval_preproc.md`](experiments/figures/gold_eval_preproc.md). The
+code ships (`src/thai_plate_synth/rerank.py`,
+`scripts/eval_preproc_sweep.py`) — both are useful templates and both
+are honest negative signals.
+
+**Read:** synth_v3b at 72.1% char-acc is the real ceiling for this
+recognizer without retraining. The remaining 27.9% gap is a retraining-
+or architecture-level problem, not a post-processing one.
 
 ### Source quality filter
 
