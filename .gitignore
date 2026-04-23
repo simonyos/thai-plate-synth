@@ -24,6 +24,8 @@ data/synth_v1/
 data/synth_v*/
 data/real_test/images/
 data/real_test/labels/
+data/real_pseudo/
+data/real_pseudo_v*/
 # Scraped images stay local; text-only label artifacts commit for auditing.
 data/real_scrape/**/images/
 data/real_scrape/**/_dupes/

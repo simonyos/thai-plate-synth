@@ -128,7 +128,7 @@ char-accuracy where ground truth exists) are in
 ✅ Weekend 5c — hand-verified 50-plate gold set → **48% VLM exact plate accuracy, 88% char-level LCS**; all failures are consonant substitutions
 ✅ Weekend 5d — quality filter: drop 2 unreliable sources (86% / 67% skip rates) → **784-plate clean training corpus**
 ✅ Weekend 6 — confusion-aware synth + pseudo-label distillation: **negative result** — neither intervention improves on synth_v2's 0.346 char-acc, naive distillation regresses to 0.220
-🚧 Weekend 7 — pick between (a) cleaner pseudo-labels via stage-1-driven bbox synthesis, (b) yolov8s backbone upgrade, or (c) replace stage-2 entirely with a small LoRA-tuned VLM
+✅ Weekend 7 — **clean-bbox distillation hits 0.721 char-acc** (2.1× the synth_v2 baseline); yolov8s backbone alone regresses
 
 ## Real-plate corpus
 
@@ -227,8 +227,66 @@ accurate part of the signal; the boxes were the liability.
 
 These are both standard failure modes in self-distillation research,
 confirmed here on a controlled ablation. The right next intervention
-is one that produces cleaner bboxes (e.g., stage-1-detector crop + 
+is one that produces cleaner bboxes (e.g., stage-1-detector crop +
 evenly-spaced chars) or avoids bbox supervision entirely (VLM SFT).
+
+## Weekend 7 — the clean-bbox result
+
+Two one-variable experiments against the synth_v2 baseline:
+
+| Run | Change vs baseline | Gold-27 char-acc | Δ vs synth_v2 |
+|---|---|---:|---:|
+| `synth_v2` | — (baseline) | 0.346 | — |
+| `synth_v4` | yolov8n → yolov8s backbone, same data | 0.286 | **−0.060** |
+| `synth_v3b` | new pseudo-labels: detector-crop + evenly-spaced bboxes | **0.721** | **+0.375** |
+
+Weekend 6's conclusion — *"the class labels from the VLM are the accurate part
+of the signal; the bboxes are the liability"* — motivated the synth_v3b
+pipeline rewrite:
+
+1. Run the stage-1 [`thai-plate-ocr`](https://github.com/simonyos/thai-plate-ocr)
+   plate detector to crop each real image to the plate region.
+2. Discard the synth_v2 character-box proposals entirely.
+3. For each crop, split the width into `len(gt_string)` equal slices; assign
+   each slice the character class from the VLM string, with a generous
+   vertical band chosen from the crop aspect ratio (2-line vs 1-line plate).
+
+The resulting bboxes are spatially imprecise — Thai digits are narrower than
+consonants, so the slices don't align tightly — but the class labels are
+correct and the horizontal ordering is correct, which is what the classifier
+head actually needs. And crucially, *every* record survives: 784/784 kept
+(vs 282/784 with the synth_v2-proposal alignment) because we're no longer
+bottlenecked on a weak model's detection count matching the VLM string
+length.
+
+**Backbone upgrade underperformed** — yolov8s (11M params vs yolov8n's 3M)
+trained to higher synth-set mAP@0.5:0.95 (0.993 vs 0.987) but lost ground
+on real plates. Two exact matches (`8กฎ6487`, `6กม3928` — the cleanest
+straight-on shots) show the extra capacity does land on easy cases, but
+it overfit the synthetic distribution enough to hurt broad generalisation.
+Confirms weekend-6's diagnosis: the bottleneck isn't parameter count, it's
+real-world pixel exposure.
+
+**Key synth_v3b gains** from the per-plate view ([full table](experiments/figures/gold_eval.md)):
+
+| gt | synth_v2 | synth_v3b |
+|---|---|---|
+| `6กค3683` | `ฮ` (0.00) | `6ก3683` (0.86) |
+| `ทษ4346` | `พพพฝ` (0.00) | `43466` (0.67) |
+| `ธษ456` | `1` (0.00) | `รข4456` (0.60) |
+| `2กณ6969` | `4` (0.00) | `2กต6969` (0.86) |
+| `4กน8869` | `ฐ` (0.00) | `4ก8869` (0.86) |
+| `1กฌ1616` | `4` (0.00) | `1กพ1616` (0.86) |
+| `6กค3683` | `ภคก3683` (0.71) | `66กค3683` (**1.00**) |
+
+synth_v3b doesn't break the zero-exact-match barrier (one near-miss hits
+LCS=1.0 but with a duplicated leading digit), and the remaining errors are
+still consonant substitutions from the weekend-5 consonant-confusion
+catalogue (ค↔พ, ฎ↔ด, ต↔ถ). But it *dramatically* narrows those errors
+from "plate is unreadable" to "plate has one wrong consonant among 6–7
+correct characters" — the shape of the remaining gap is now a small,
+well-defined language-model or lookup-table problem rather than a vision
+problem.
 
 Full side-by-side per-plate predictions: [`experiments/figures/gold_eval.md`](experiments/figures/gold_eval.md).
 
