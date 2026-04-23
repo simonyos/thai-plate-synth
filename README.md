@@ -90,16 +90,40 @@ without losing the clean-case performance.
 
 ![Confusion matrix](experiments/figures/synth_v2/confusion_matrix.png)
 
-The real test is weekend 4 — running these weights on hand-labeled real
-plates from the `thai-plate-ocr` validation gallery. That is where the
-synth→real gap actually gets measured.
+## Weekend 4 — head-to-head on real plates
+
+Stage-1 detector from the prior [`thai-plate-ocr`](https://github.com/simonyos/thai-plate-ocr)
+project crops plates from 12 reproducibly-sampled validation images (seed=7);
+both synth-trained stage-2 weights are then run on the crops, post-processed
+with a Thai-plate regex (`[0-9]{0,2}[ก-ฮ]{1,3}[0-9]{1,4}`), and graded against
+the 5 plates hand-labeled in the prior project.
+
+**Accuracy** (longest-common-subsequence / len(gt), averaged over 5 labeled plates):
+
+| Run | Augmentation | Char-accuracy on real plates | Exact match |
+|---|---|---:|---:|
+| `synth_v1` | none | 0.15 | 0/5 |
+| `synth_v2` | full pipeline | **0.66** | 0/5 |
+
+Augmentation lifts character accuracy **4.4×** on real plates — from basically
+unusable (0.15) to reading most of the registration line (0.66). The
+remaining errors on `synth_v2` are consonant substitutions (ฟ↔พ, ฮ↔8, ฉ↔ฆ)
+and a missing digit on two plates. No plate hits exact match yet; the
+consonant-confusion set is the next bottleneck.
+
+![Real-plate gallery](experiments/figures/real_eval_gallery.png)
+
+Per-image predictions (all 12, with regex-filtered strings and per-plate
+char-accuracy where ground truth exists) are in
+[`experiments/figures/real_eval_v1_v2.md`](experiments/figures/real_eval_v1_v2.md).
 
 ## Status
 
 ✅ Weekend 1 — renderer MVP
 ✅ Weekend 2 — synth-only training (ceiling: mAP@0.5:0.95 = 0.995)
 ✅ Weekend 3 — augmentation pipeline + augmented training (mAP@0.5:0.95 = 0.987)
-🚧 Weekend 4 — hand-label ~50 real plates; run v1 vs v2 head-to-head
+✅ Weekend 4 — head-to-head on 12 real plates; augmentation lifts char-acc 4.4×
+🚧 Weekend 5 — Streamlit demo + HF Space + close remaining consonant-confusion gap
 
 ## License
 
