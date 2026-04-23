@@ -17,12 +17,17 @@ def train(
     epochs: int = 50,
     imgsz: int = 480,
     batch: int = 32,
-    project: str = "runs/detect",
+    project: str = "experiments/runs",
     name: str = "synth_v1",
     device: str | int | None = None,
     seed: int = 42,
 ) -> None:
     from ultralytics import YOLO
+    from ultralytics.utils import SETTINGS
+
+    # Ultralytics prepends its own `runs_dir` (default "runs/detect") to relative
+    # project paths. Flatten it so outputs land at `<project>/<name>/`.
+    SETTINGS["runs_dir"] = "."
 
     yaml = data / "dataset.yaml"
     if not yaml.is_file():
@@ -53,7 +58,7 @@ def main() -> None:
     ap.add_argument("--epochs", type=int, default=50)
     ap.add_argument("--imgsz", type=int, default=480)
     ap.add_argument("--batch", type=int, default=32)
-    ap.add_argument("--project", default="runs/detect")
+    ap.add_argument("--project", default="experiments/runs")
     ap.add_argument("--name", default="synth_v1")
     ap.add_argument("--device", default=None)
     ap.add_argument("--seed", type=int, default=42)

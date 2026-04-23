@@ -61,9 +61,39 @@ Six plates from the weekend-1 renderer (seed=0, no augmentation yet):
 All 44 Thai consonants and 10 digits are in the class space; per-character
 YOLO bboxes ship alongside every image.
 
+## Weekend-2 results — synth-only training
+
+YOLOv8n trained on 5,000 synth plates (4,500 train / 500 val), 50 epochs,
+imgsz 480, batch 64, seed 42. **13 min on an RTX 3060 Ti** — essentially
+the synth ceiling: no augmentation yet, no domain gap to close within the
+synth set.
+
+| Metric | Value |
+|---|---:|
+| Precision | 0.997 |
+| Recall | 1.000 |
+| mAP@0.5 | **0.995** |
+| mAP@0.5:0.95 | **0.995** |
+| Train time | 13 min (3060 Ti, 8 GB) |
+
+![Training curves](experiments/figures/synth_v1/results.png)
+
+The 54-class confusion matrix is near-diagonal — all 44 consonants and 10
+digits are separable on clean renders:
+
+![Confusion matrix](experiments/figures/synth_v1/confusion_matrix.png)
+
+This is the **upper bound** we're trying to preserve through realism
+augmentation. Weekend 3 adds perspective, blur, lighting, and background
+compositing; weekend 4 runs the same weights against hand-labeled real
+plates — expect a significant drop, which is exactly the signal that
+drives the augmentation ablation.
+
 ## Status
 
-🚧 Weekend 1 in progress — renderer MVP landed; augmentation and training next.
+✅ Weekend 1 — renderer MVP
+✅ Weekend 2 — first training run (synth-only, no augmentation)
+🚧 Weekend 3 — augmentation + realism pass
 
 ## License
 
